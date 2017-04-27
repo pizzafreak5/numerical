@@ -19,15 +19,17 @@ import numpy
 #preforms trapezoid method on a function
 def trapezoid_method(function_string, interval_start, interval_end, steps):
 
+    function = comp_func(function_string)
+
     step_size = (float(interval_end) - float(interval_start)) / float(steps)
     steps = numpy.arange(interval_start, interval_end, step_size)
-    print(steps)
     py_steps = []
 
     #copy ndarray to list
     for elem in steps:
         py_steps.append(elem)
 
+    #Sometimes numpy allows the end of the range on the list
     if py_steps[-1] == interval_end:
         py_steps.pop()
 
@@ -45,8 +47,8 @@ def trapezoid_method(function_string, interval_start, interval_end, steps):
             point_1 = elem
             point_2 = py_steps[py_steps.index(elem) + 1]
 
-        side_1 = eval_function(function_string, point_1)
-        side_2 = eval_function(function_string, point_2)
+        side_1 = eval_function(function, point_1)
+        side_2 = eval_function(function, point_2)
 
         area = trap_area(side_1, side_2, step_size)
 
@@ -59,7 +61,9 @@ def trapezoid_method(function_string, interval_start, interval_end, steps):
 #       Simpson's Composite         #
 #===================================#
 
-def simpson_composite(func, start, end, n):
+def simpson_composite(function, start, end, n):
+
+    func = comp_func(function)
 
     step_size = (float(end) - float(start)) / float(n)
 
@@ -81,91 +85,70 @@ def simpson_composite(func, start, end, n):
 #               Romberg             #
 #===================================#
 
-#referenced Source:
-#http://www.math-cs.gordon.edu/courses/ma342/python/
+def romberg(function, start, end, n, m):
 
-def romberg(f, a, b, n):
-    r = numpy.array([[0] * (n+1)] * (n+1), float)
-    h = b - a
- 
-    #eval() speedup
-    st = parser.expr(f)
-    compiled = st.compile('<string>')
-   
-    #Get f(a)
-    x = a
-    f_a = eval(compiled)
- 
-    #Get f(b)
-    x = b
-    f_b = eval(compiled)
-    r[0,0] = 0.5 * h * ( f_a + f_b )
-    power_2 = 1                         #First power is 1 then 2, 4, 8
- 
-    for i in numpy.arange(1, n+1):
-        h = 0.5 * h
-        sum_total = 0.0
-        power_2 *= 2        
-        for k in numpy.arange(1, power_2, 2):
-            x = (a+k*h)
-            sum_total = sum_total + eval(compiled)
- 
-        r[i, 0] = 0.5 * r[i-1, 0] + sum_total * h
- 
-        power_4 = 1
-        for j in numpy.arange(1, i + 1):
-            power_4 *= 4
-            r[i,j] = r[i, j-1] + ( r[i,j-1] - r[i-1, j-1]) / (power_4 - 1)
-    return r
+    if n < 0 or m < 0:
+        e = 'n or m must be greater or equal to 0'
+        raise Exception(e)
+
+    if m > n:
+        e = 'm must be less than or equal to n'
+        raise Exception(e)
+
+    #Pre-compiling the function results in higher run times.
+    func = comp_func(function)
+
+    
+
+    #Romberg's could be written recursively,
+    #but python has some limited recursion support,
+    #as its not considered pythonic. To that end,
+    #an iterative method should be less memory intensive.
+    #Plus its a bit of fun to come up with an iterative method.
+
+    #build matrix for results
+    results =[]
+
+    for i in range(0, n + 1):
+        results.append([])
+
+        for j in range(0, m+1):
+            results[i].append(float('nan'))
+
+    for i in range(0, n+1):
+        for j in range(0, m+1):
+
+            if j <= i:
+
+                h = (float(end) - float(start))/(2**i)
+
+                if i == 0 and j == 0:
+                    rom = h * (eval_function(func, start) + eval_function(func, end))
+
+                elif i > 0 and j == 0:
+                    summation = 0.0
+                    for k in range (1, ((i*2) - 1)):
+                        summation += eval_function(func, (start + ((2 * k - 1) * h)))
+                    rom = (0.5 * results[(i - 1)][0]) + (h * summation)
+                    
+
+                elif i > 0 and j > 0:
+                    rom = (1 / ((4 ** float(j)) - 1)) * (((4**j) * results[i][(j-1)]) - results[(i - 1)][(j-1)])
+
+                #check_str = str(len(results)) + ':' + str(i) + '@' + str(len(results[0])) + ':' + str(j)
+                #print(check_str)
+
+                print ('rom {}:{} = {}'.format(i, j, rom))
+                results[i][j] = rom
+
+    return results
 
 
-def test_romberg():
-    '''Romberg 1 a.
-   f = "x/sqrt(x**2 + 9)"
-   a = 0
-   b = 4
-   n = 20
-   r = romberg(f, a, b, n)
-   x, y = (r.shape)
- 
-   print ("function:",f)
-   print ("romberg:",n, ":", r[x-1, y-1])
-   #'''
- 
-    '''Romberg 1 b.
-   f = "(x**3)/(x**2 + 1)"
-   a = 0
-   b = 1
-   n = 20
-   r = romberg(f, a, b, n)
-   x, y = (r.shape)
- 
-   print ("function:",f)
-   print ("romberg:",n, ":", r[x-1, y-1])
-   #'''
- 
-    '''Romberg 1 c.
-   f = "(x*e**x)"
-   a = 0
-   b = 1
-   n = 20
-   r = romberg(f, a, b, n)
-   x, y = (r.shape)
- 
-   print ("function:",f)
-   print ("romberg:",n, ":", r[x-1, y-1])
-   #'''
- 
-    #''' Romberg 1 d.
-    f = "(x**2)*log1p(x)"
-    a = 1
-    b = 3
-    n = 20
-    r = romberg(f, a, b, n)
-    x, y = (r.shape)
-    print ("function:",f)
-    print ("romberg:",n, ":", r[x-1, y-1])
-    #'''
+#===================================#
+#       Adaptive Trapezoid          #
+#===================================#
+
+def adaptive_trap(function, )
 
 #===================================#
 #           Adaptive Simpson        #
@@ -211,68 +194,6 @@ def adaptive_simpson (f, a, b, tolerance):
         s = s_1 + ( s_1 - s_0 ) / 15.0
     return s
  
-def test_adaptive_tolerance():
-    #'''Simpson 7 a.
-    f = "e**(x**2)"
-    a = 0
-    b = 1
-    tolerance = 0.5 * 10**-8
-    s = adaptive_simpson(f, a, b, tolerance)
-    print ("adaptive simpson:",f, ":", s, " with tolerance value:", tolerance)
-    #'''
- 
-    #'''Simpson 7 b.
-    f = "sin(x**2)"
-    a = 0
-    b = numpy.sqrt(numpy.pi)
-    tolerance = 0.5 * 10**-8
-    s = adaptive_simpson(f, a, b, tolerance)
-    print ("adaptive simpson:",f, ":", s, " with tolerance value:", tolerance)
-    #'''
- 
-    #'''Simpson 7 c.
-    f = "e**(cos(x))"
-    a = 0
-    b = numpy.pi
-    tolerance = 0.5 * 10**-8
-    s = adaptive_simpson(f, a, b, tolerance)
-    print ("adaptive simpson:",f, ":", s, " with tolerance value:", tolerance)
-    #'''
-   
-    #'''Simpson 7 e.
-    f = "x/(2*(e**x)-(e**(-x)))"
-    a = 0
-    b = 1
-    tolerance = 0.5 * 10**-8
-    s = adaptive_simpson(f, a, b, tolerance)
-    print ("adaptive simpson:",f, ":", s, " with tolerance value:", tolerance)
-    #'''
-
-
-#===================================#
-#               Utility             #
-#===================================#
-         
-#Takes a string, representing a mathematical function in python
-#syntax (with variable x), and a value to evaluate it at.
-#Returns the f(val)
-def eval_function(string, val):
-
-    if 'x' not in string:
-        e = 'Independant Variable x not found in provided function.'
-        raise Exception(e)
-
-    x = val
-
-    pycode = parser.expr(string).compile()
-    result = eval(pycode)
-    result = float(result)
-
-    if type(result) != type(0.0):
-        e = 'Invalid Function: Final type is not float: {} {}'.format(type(result), result)
-        raise Exception(e)
-
-    return result
 
 #===================================#
 #       Composite Midpoint          #
@@ -291,87 +212,45 @@ def composite_midpoint_rule(f, a, b, m):
         sum_total += eval(compiled) * h
         x += h
     return sum_total
- 
-def test_composite():
-    #'''Simpson 4 a.
-    f = "e**(x**2)"
-    a = 0
-    b = 1
-    m = 16
-    sum_total = composite_midpoint_rule(f, a, b, m)
-    print ("Composite midpoint rule:",f, ":", sum_total, " with m value:", m)
-    #'''
- 
-    #'''Simpson 4 a.
-    f = "e**(x**2)"
-    a = 0
-    b = 1
-    m = 32
-    sum_total = composite_midpoint_rule(f, a, b, m)
-    print ("Composite midpoint rule:",f, ":", sum_total, " with m value:", m)
-    #'''
- 
-    print()
- 
-    #'''Simpson 4 b.
-    f = "sin(x**2)"
-    a = 0
-    b = numpy.sqrt(numpy.pi)
-    m = 16
-    sum_total = composite_midpoint_rule(f, a, b, m)
-    print ("Composite midpoint rule:",f, ":", sum_total, " with m value:", m)
-    #'''
- 
-    #'''Simpson 4 b.
-    f = "sin(x**2)"
-    a = 0
-    b = numpy.sqrt(numpy.pi)
-    m = 32
-    sum_total = composite_midpoint_rule(f, a, b, m)
-    print ("Composite midpoint rule:",f, ":", sum_total, " with m value:", m)
-    #'''
- 
-    print()
- 
-    #'''Simpson 4 c.
-    f = "e**(cos(x))"
-    a = 0
-    b = numpy.pi
-    m = 16
-    sum_total = composite_midpoint_rule(f, a, b, m)
-    print ("Composite midpoint rule:",f, ":", sum_total, " with m value:", m)
-    #'''
- 
-    #'''Simpson 4 c.
-    f = "e**(cos(x))"
-    a = 0
-    b = numpy.pi
-    m = 32
-    sum_total = composite_midpoint_rule(f, a, b, m)
-    print ("Composite midpoint rule:",f, ":", sum_total, " with m value:", m)
-    #'''
- 
-    print()
-    #'''Simpson 4 e.
-    f = "x/(2*(e**x)-e**(-x))"
-    a = 0
-    b = 1
-    m = 16
-    sum_total = composite_midpoint_rule(f, a, b, m)
-    print ("Composite midpoint rule:",f, ":", sum_total, " with m value:", m)
-    #'''
- 
-    #'''Simpson 4 e.
-    f = "x/(2*(e**x)-e**(-x))"
-    a = 0
-    b = 1
-    m = 32
-    sum_total = composite_midpoint_rule(f, a, b, m)
-    print ("Composite midpoint rule:",f, ":", sum_total, " with m value:", m)
-    #'''    
 
 
+#===================================#
+#       Composite Midpoint          #
+#===================================#
 
+#===================================#
+#               Utility             #
+#===================================#
+
+#NOTE: Rewrite to move compilation out of function
+         
+#Takes a string, representing a mathematical function in python
+#syntax (with variable x), and a value to evaluate it at.
+#Returns the f(val)
+def eval_function(compiled_string, val):
+
+    x = float(val)
+
+    result = eval(compiled_string)
+    result = float(result)
+
+    if type(result) != type(0.0):
+        e = 'Invalid Function: Final type is not float: {} {}'.format(type(result), result)
+        raise Exception(e)
+
+    return result
+
+#Returns a compiled function, but raises exceptions
+#if the statement is incorrect
+def comp_func(string):
+
+    if 'x' not in string:
+        e = 'Independant Variable x not found in provided function.'
+        raise Exception(e)
+
+    pycode = parser.expr(string).compile()
+
+    return pycode
 
 #Returns the area of a trapezoid. Probably doesn't
 #need to be it's own function, but its nice anyway
@@ -380,3 +259,8 @@ def trap_area(side_1, side_2, height):
     area = (side_1 + side_2) * 0.5 * height
 
     return area
+
+
+
+
+
