@@ -137,8 +137,6 @@ def romberg(function, start, end, n, m):
 
                 #check_str = str(len(results)) + ':' + str(i) + '@' + str(len(results[0])) + ':' + str(j)
                 #print(check_str)
-
-                print ('rom {}:{} = {}'.format(i, j, rom))
                 results[i][j] = rom
 
     return results
@@ -148,7 +146,72 @@ def romberg(function, start, end, n, m):
 #       Adaptive Trapezoid          #
 #===================================#
 
-def adaptive_trap(function, )
+#References matlab code in Numerical Analysis textbook, page 271
+
+def adaptive_trap(function, start, end, tolerance):
+
+    #compile speedup + input check
+    func = comp_func(function)
+    
+    n = 0
+    app = []
+    app.append(trap(func, start, end))
+
+    a = []
+    b = []
+
+    tol = []
+    tol.append(tolerance)
+
+    a.append(float(start))
+    b.append(float(start))
+    
+    while n >= 0:
+        c = (a[n] + b[n]) / float(2)
+        old_app = app[n]
+
+        if len(app) < n:
+            app.append(float('nan'))
+
+        app[n] = trap(func, a[n], c)
+
+        if len(app) < n + 1:
+            app.append(float('nan'))
+
+        app[n+1] = trap(function, c, b[n])
+
+        if abs(oldapp - (app[n] + app[n+1])) < 3*tol[n]:
+            result += app[n] + app[n+1]
+            n = n-1
+        else:
+            if len(b) < n:
+                b.append(float('nan'))
+
+            if len(a) < n:
+                a.append(float('nan'))
+
+            if len(b) < n+1:
+                b.append(float('nan'))
+
+            if len(a) < n+1:
+                a.append(float('nan'))
+
+            b[n+1] = b[n+1] = b(n)
+            b[n] = c
+            a[n+1] = c
+
+            tol[n] = tol[n] / 2
+
+            if len(tol) < n+1:
+                tol.append(float('nan'))
+
+            tol[n+1] = tol[n]
+
+            n += 1
+
+        
+        
+        
 
 #===================================#
 #           Adaptive Simpson        #
@@ -221,6 +284,11 @@ def composite_midpoint_rule(f, a, b, m):
 #===================================#
 #               Utility             #
 #===================================#
+
+def trap(compiled_function, a, b):
+    floata = float(a)
+    floatb = float(b)
+    return trap_area(eval_function(compiled_function, a), eval_function(compiled_function, b), (floatb - floata)/2)
 
 #NOTE: Rewrite to move compilation out of function
          
